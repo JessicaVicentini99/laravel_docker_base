@@ -25,7 +25,8 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'role' => ['required', Rule::in(UserRole::values())],
+            'cpf_cnpj' => 'required|string|max:14',
+//            'role' => ['required', Rule::in(UserRole::values())],
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
         ];

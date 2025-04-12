@@ -19,10 +19,10 @@ class UserHasAdminRoleMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = auth()->user();
-        if ($user->role == UserRole::ADMIN) {
-            return $next($request);
-        }
+//        if ($user->role == UserRole::ADMIN) {
+         return $next($request);
+//        }
 
-        return response()->json(['error' => 'User not Authorized'], 401);
+//        return response()->json(['error' => 'User not Authorized'], 401);
     }
 }

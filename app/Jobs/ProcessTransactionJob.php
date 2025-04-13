@@ -9,10 +9,11 @@ use App\Models\User;
 use App\Services\ProcessTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-//use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+
+//use Illuminate\Queue\SerializesModels;
 
 class ProcessTransactionJob implements ShouldQueue
 {

@@ -2,24 +2,23 @@
 
 namespace App\Listeners;
 
+use App\Jobs\CreateBankAccountForUserJob;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 
-class CreateAccountAfterRegistration
+class CreateAccountAfterRegistration implements ShouldQueue
 {
     /**
      * Create the event listener.
      */
     public function __construct()
     {
-        //
     }
 
-    /**
-     * Handle the event.
-     */
-    public function handle(object $event): void
+
+    public function handle(Registered $event)
     {
-        //
+        $user = $event->user;
+        CreateBankAccountForUserJob::dispatch($user);
     }
 }

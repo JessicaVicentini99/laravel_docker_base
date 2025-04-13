@@ -41,9 +41,7 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'to_user_id');
     }
 
-    /**
-     * TODO corrigir verificacao
-     */
+
     public function getStatusAttribute($value)
     {
         return TransactionStatusEnum::from($value);
@@ -54,30 +52,4 @@ class Transaction extends Model
     {
         $this->attributes['status'] = $value instanceof TransactionStatusEnum ? $value->value : $value;
     }
-
-
-    // Função para verificar se a transação está pendente
-    public function isPending()
-    {
-        return $this->status === TransactionStatusEnum::pending()->value;
-    }
-
-    // Função para verificar se a transação está concluída
-    public function isCompleted()
-    {
-        return $this->status === TransactionStatusEnum::completed()->value;
-    }
-
-    // Função para verificar se a transação foi cancelada
-    public function isCanceled()
-    {
-        return $this->status === TransactionStatusEnum::canceled()->value;
-    }
-
-    // Função para verificar se a transação falhou
-    public function isFailed()
-    {
-        return $this->status === TransactionStatusEnum::failed()->value;
-    }
-
 }

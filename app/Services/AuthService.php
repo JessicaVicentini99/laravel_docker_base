@@ -31,9 +31,9 @@ class AuthService
         $user = $this->userRepository->store($data);
 
         $this->assignUserRole($user, $data['cpf_cnpj']);
-//        event(new Registered($user));
+        event(new \Illuminate\Auth\Events\Registered($user));
         Log::info('testando log');
-        CreateBankAccountForUserJob::dispatch($user);
+//        CreateBankAccountForUserJob::dispatch($user);
 
         return JWTAuth::fromUser($user);
     }

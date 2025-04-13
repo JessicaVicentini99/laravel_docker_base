@@ -79,7 +79,7 @@ class ProcessTransactionJob implements ShouldQueue
             true,
             TransactionStatusEnum::completed()
         );
-        $this->notifyUser($payeeAccount->user, $transaction);
+        NotifyTransactionJob::dispatch($payeeAccount->user, $transaction);
     }
 
     /**

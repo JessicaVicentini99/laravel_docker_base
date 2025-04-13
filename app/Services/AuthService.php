@@ -3,11 +3,9 @@
 namespace App\Services;
 
 use App\Enums\UserRoleEnum;
-use App\Jobs\CreateBankAccountForUserJob;
+use App\Models\User;
 use App\Repositories\UserRepository;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthService
@@ -20,7 +18,7 @@ class AuthService
     }
 
     /**
-     * Armazena o usuário e atribui o papel com base no CPF ou CNPJ.
+     * Stores the user and assigns the role based on CPF or CNPJ.
      *
      * @param array $data
      * @return string
@@ -32,16 +30,13 @@ class AuthService
 
         $this->assignUserRole($user, $data['cpf_cnpj']);
         event(new \Illuminate\Auth\Events\Registered($user));
-        Log::info('testando log');
-//        CreateBankAccountForUserJob::dispatch($user);
-
         return JWTAuth::fromUser($user);
     }
 
     /**
-     * Atribui o papel ao usuário com base no CPF ou CNPJ.
+     * Assigns the role to the user based on CPF or CNPJ.
      *
-     * @param \App\Models\User $user
+     * @param User $user
      * @param string $cpfCnpj
      * @return void
      */
@@ -55,7 +50,7 @@ class AuthService
     }
 
     /**
-     * Realiza o login do usuário e retorna o token JWT.
+     * Performs user login and returns the JWT token.
      *
      * @param array $data
      * @return string|null

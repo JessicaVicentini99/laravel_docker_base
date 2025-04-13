@@ -13,6 +13,7 @@ class CreateBankAccountForUserJob implements ShouldQueue
     use Queueable;
 
     private User $user;
+
     /**
      * Create a new job instance.
      */
@@ -22,13 +23,12 @@ class CreateBankAccountForUserJob implements ShouldQueue
     }
 
     /**
-     * Execute the job.
+     * xecute the job to create a bank account for the associated user.
+     *
+     * @return void
      */
     public function handle(): void
     {
-        Log::info('Iniciando a criação da conta bancária para o usuário');
-        Log::info('Iniciando a criação da conta bancária para o usuário', ['user_id' => $this->user->id]);
-
         try {
             // Criar a conta bancária para o usuário
             $account = Account::create([
@@ -52,6 +52,8 @@ class CreateBankAccountForUserJob implements ShouldQueue
 
     /**
      * Generate a unique account number (e.g., 123456-0).
+     *
+     * @return string
      */
     protected function generateUniqueAccountNumber(): string
     {

@@ -23,6 +23,11 @@ class ProcessTransactionJob implements ShouldQueue
     private int $payeeId;
     private float $amount;
 
+    /**
+     * @param int|null $payerId
+     * @param int $payeeId
+     * @param float $amount
+     */
     public function __construct(?int $payerId, int $payeeId, float $amount)
     {
         $this->payerId = $payerId;
@@ -30,72 +35,106 @@ class ProcessTransactionJob implements ShouldQueue
         $this->amount = $amount;
     }
 
+    /**
+     * Execute the job to process a transaction.
+     *
+     * @param ProcessTransactionService $processTransactionService
+     * @return void
+     */
     public function handle(ProcessTransactionService $processTransactionService): void
     {
         DB::transaction(function () use ($processTransactionService) {
             $payeeAccount = $this->getAccount($this->payeeId);
 
             if (is_null($this->payerId)) {
-                // Caso de depósito
-                $payeeAccount->increment('balance', $this->amount);
-                $transaction = Transaction::create([
-                    'from_user_id' => null,
-                    'to_user_id' => $this->payeeId,
-                    'amount' => $this->amount,
-                    'is_received' => true,
-                    'status' => TransactionStatusEnum::completed(),
-                ]);
-                $this->notifyUser($this->payeeId, $transaction);
+                $this->processDeposit($payeeAccount);
             } else {
-                // Caso de transferência
-                $payerAccount = $this->getAccount($this->payerId);
-
-                if ($payerAccount->balance < $this->amount) {
-                    Transaction::create([
-                        'from_user_id' => $this->payerId,
-                        'to_user_id' => $this->payeeId,
-                        'amount' => $this->amount,
-                        'is_received' => false,
-                        'status' => TransactionStatusEnum::failed(),
-                    ]);
-                    return;
-                }
-                $transactionApproved = $processTransactionService->processTransaction();
-
-                if (!$transactionApproved) {
-                    // Serviço negou ou falhou
-                    Transaction::create([
-                        'from_user_id' => $this->payerId,
-                        'to_user_id' => $this->payeeId,
-                        'amount' => $this->amount,
-                        'is_received' => false,
-                        'status' => TransactionStatusEnum::failed(),
-                    ]);
-                    return;
-                }
-
-                $payerAccount->decrement('balance', $this->amount);
-                $payeeAccount->increment('balance', $this->amount);
-
-                $transaction = Transaction::create([
-                    'from_user_id' => $this->payerId,
-                    'to_user_id' => $this->payeeId,
-                    'amount' => $this->amount,
-                    'is_received' => true,
-                    'status' => TransactionStatusEnum::completed(),
-                ]);
-
-                $this->notifyUser($this->payeeId, $transaction);
+                $this->processTransfer($processTransactionService, $payeeAccount);
             }
         });
     }
 
+    /**
+     * Get the account associated with the user ID.
+     *
+     * @param int $userId
+     * @return Account|null
+     */
     private function getAccount(int $userId): ?Account
     {
-        //TODO implementar findUserbyid
-        return Account::where('user_id', $userId)->first();
+        return Account::findByUserId( $userId);
     }
 
+    /**
+     * Process a deposit transaction.
+     *
+     * @param Account $payeeAccount
+     * @return void
+     */
+    private function processDeposit(Account $payeeAccount): void
+    {
+        $payeeAccount->increment('balance', $this->amount);
+
+        $transaction = $this->createTransaction(null, $this->payeeId, $this->amount, true, TransactionStatusEnum::completed());
+        $this->notifyUser($this->payeeId, $transaction);
+    }
+
+    /**
+     * Process a transfer transaction.
+     *
+     * @param ProcessTransactionService $processTransactionService
+     * @param Account $payeeAccount
+     * @return void
+     */
+    private function processTransfer(ProcessTransactionService $processTransactionService, Account $payeeAccount): void
+    {
+        $payerAccount = $this->getAccount($this->payerId);
+
+        if ($payerAccount->balance < $this->amount) {
+            $this->createTransaction($this->payerId, $this->payeeId, $this->amount, false, TransactionStatusEnum::failed());
+            return;
+        }
+
+        if (!$processTransactionService->processTransaction()) {
+            $this->createTransaction($this->payerId, $this->payeeId, $this->amount, false, TransactionStatusEnum::failed());
+            return;
+        }
+
+        $payerAccount->decrement('balance', $this->amount);
+        $payeeAccount->increment('balance', $this->amount);
+
+        $transaction = $this->createTransaction($this->payerId, $this->payeeId, $this->amount, true, TransactionStatusEnum::completed());
+        $this->notifyUser($this->payeeId, $transaction);
+    }
+
+    /**
+     * Create a transaction record.
+     *
+     * @param int|null $fromUserId
+     * @param int $toUserId
+     * @param float $amount
+     * @param bool $isReceived
+     * @param TransactionStatusEnum $status
+     * @return Transaction
+     */
+    private function createTransaction(?int $fromUserId, int $toUserId, float $amount, bool $isReceived, TransactionStatusEnum $status): Transaction
+    {
+        return Transaction::create([
+            'from_user_id' => $fromUserId,
+            'to_user_id' => $toUserId,
+            'amount' => $amount,
+            'is_received' => $isReceived,
+            'status' => $status,
+        ]);
+    }
+
+    /**
+     * Notify the user about the transaction.
+     *
+     * @param int $userId
+     * @param Transaction $transaction
+     * @return void
+     */
     private function notifyUser(int $userId, Transaction $transaction): void
     {
         try {

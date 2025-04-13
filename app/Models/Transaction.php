@@ -28,6 +28,8 @@ class Transaction extends Model
 
 
     /**
+     * Relationship 1:N with the origin user (who made the transaction)
+     *
      * @return BelongsTo
      */
     public function fromUser(): BelongsTo
@@ -35,19 +37,29 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'from_user_id');
     }
 
-    // Relacionamento 1:N com o usuário de destino (quem recebeu a transação)
+   /**
+     * Relationship 1:N with the destination user (who received the transaction)
+     *
+     * @return BelongsTo
+     */
     public function toUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'to_user_id');
     }
 
-
+    /**
+     * @param $value
+     * @return TransactionStatusEnum|\Spatie\Enum\Enum
+     */
     public function getStatusAttribute($value)
     {
         return TransactionStatusEnum::from($value);
     }
 
-    // Mutador para garantir que o status seja salvo corretamente
+    /**
+     * @param $value
+     * @return void
+     */
     public function setStatusAttribute($value)
     {
         $this->attributes['status'] = $value instanceof TransactionStatusEnum ? $value->value : $value;

@@ -15,7 +15,12 @@ class CreateAccountAfterRegistration implements ShouldQueue
     {
     }
 
-
+    /**
+     * Handle the event.
+     *
+     * @param Registered $event
+     * @return void
+     */
     public function handle(Registered $event)
     {
         $user = $event->user;

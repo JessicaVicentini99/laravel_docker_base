@@ -18,11 +18,17 @@ class Account extends Model
         'user_id',
     ];
 
+    /**
+     * @var array<string, string>
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return string
+     */
     public function scopeFindByUserId($query, $userId)
     {
         return $query->where('user_id', $userId)
@@ -30,7 +36,11 @@ class Account extends Model
             ->first();
     }
 
-    // Definindo um mutador para garantir que o saldo seja sempre positivo (opcional)
+
+    /**
+     * Defining a mutator to ensure the balance is always positive (optional)
+     * @param float $value
+     */
     public function setBalanceAttribute($value)
     {
         $this->attributes['balance'] = max(0, $value); // Garantir que o saldo não seja negativo

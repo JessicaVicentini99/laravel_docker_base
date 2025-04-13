@@ -19,6 +19,7 @@ class AccountResource extends JsonResource
             "agency" => $this->agency,
             "number" => $this->number,
             "balance" => $this->balance,
+            "user" => new UserResource($this->user),
             "created_at" => $this->created_at,
             "updated_at" => $this->created_at,
         ];

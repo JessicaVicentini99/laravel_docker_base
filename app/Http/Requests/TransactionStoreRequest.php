@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\PaymentType;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class TransactionStoreRequest extends FormRequest
 {

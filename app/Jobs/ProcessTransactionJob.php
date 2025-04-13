@@ -6,6 +6,7 @@ use App\Enums\TransactionStatusEnum;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\ProcessTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 //use Illuminate\Queue\SerializesModels;
@@ -28,9 +29,9 @@ class ProcessTransactionJob implements ShouldQueue
         $this->amount = $amount;
     }
 
-    public function handle(): void
+    public function handle(ProcessTransactionService $processTransactionService): void
     {
-        DB::transaction(function () {
+        DB::transaction(function () use ($processTransactionService) {
             $payeeAccount = $this->getAccount($this->payeeId);
 
             if (is_null($this->payerId)) {
@@ -44,7 +45,6 @@ class ProcessTransactionJob implements ShouldQueue
                     'status' => TransactionStatusEnum::completed(),
                 ]);
                 $this->notifyUser($this->payeeId, $transaction);
-//                dd($transaction);
             } else {
                 // Caso de transferência
                 $payerAccount = $this->getAccount($this->payerId);
@@ -59,9 +59,9 @@ class ProcessTransactionJob implements ShouldQueue
                     ]);
                     return;
                 }
-                $response = Http::get('https://util.devi.tools/api/v2/authorize');
+                $transactionApproved = $processTransactionService->processTransaction();
 
-                if ($response->failed() || !$response->json('data.authorization')) {
+                if (!$transactionApproved) {
                     // Serviço negou ou falhou
                     Transaction::create([
                         'from_user_id' => $this->payerId,

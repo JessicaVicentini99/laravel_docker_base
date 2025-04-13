@@ -10,7 +10,6 @@ use App\Services\AuthService;
 class AuthController extends Controller
 {
     private $authService;
-
     public function __construct(AuthService $authService){
         $this->authService = $authService;
     }

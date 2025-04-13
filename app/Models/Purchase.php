@@ -12,15 +12,18 @@ class Purchase extends Model
     protected $table = "purchases";
 
     protected $fillable = [
-      'user_id',
-      'payment_type',
-      'payment_status'
+        'user_id',
+        'payment_type',
+        'payment_status'
     ];
 
-    public function items(){
+    public function items()
+    {
         return $this->hasMany(PurchaseItem::class, 'purchase_id');
     }
-    public function delivery_address(){
+
+    public function delivery_address()
+    {
         return $this->hasOne(DeliveryAddress::class, 'purchase_id');
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\UserRole;
+use App\Enums\UserRoleEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,7 +26,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'cpf_cnpj' => 'required|string|max:14',
-//            'role' => ['required', Rule::in(UserRole::values())],
+//            'role' => ['required', Rule::in(UserRoleEnum::toValues())],
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
         ];

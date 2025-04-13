@@ -36,31 +36,4 @@ class TransactionController extends Controller
         $transactions = $this->transactionService->getByUser();
         return TransactionResource::collection($transactions);
     }
-
-    public function details($id)
-    {
-        $transaction = $this->transactionService->details($id);
-        if ($transaction) {
-            return new PurchaseDetailsResource($transaction);
-        }
-
-        return response()->json([
-            "message" => "Purchase not found",
-        ], 404);
-    }
-
-    public function reprocessPayment($id, ReprocessPaymentRequest $request)
-    {
-        $data = $request->validated();
-        $transaction = $this->transactionService->reprocessPayment($id, $data);
-
-        if ($transaction) {
-            return new PurchaseDetailsResource($transaction);
-        }
-
-        return response()->json([
-            "message" => "Purchase not found",
-        ], 404);
-    }
-
 }

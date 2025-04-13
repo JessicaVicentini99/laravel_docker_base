@@ -10,16 +10,13 @@ use App\Services\ProcessTransactionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-
-//use Illuminate\Queue\SerializesModels;
 
 class ProcessTransactionJob implements ShouldQueue
 {
     use Queueable;
 
-    private ?int $payerId; // Agora aceita null
+    private ?int $payerId;
     private int $payeeId;
     private float $amount;
 
@@ -45,7 +42,7 @@ class ProcessTransactionJob implements ShouldQueue
     {
         DB::transaction(function () use ($processTransactionService) {
             $payeeAccount = $this->getAccount($this->payeeId);
-
+            $user = User::find($this->payeeId);
             if (is_null($this->payerId)) {
                 $this->processDeposit($payeeAccount);
             } else {
@@ -62,7 +59,7 @@ class ProcessTransactionJob implements ShouldQueue
      */
     private function getAccount(int $userId): ?Account
     {
-        return Account::findByUserId( $userId);
+        return Account::findByUserId($userId);
     }
 
     /**
@@ -75,8 +72,14 @@ class ProcessTransactionJob implements ShouldQueue
     {
         $payeeAccount->increment('balance', $this->amount);
 
-        $transaction = $this->createTransaction(null, $this->payeeId, $this->amount, true, TransactionStatusEnum::completed());
-        $this->notifyUser($this->payeeId, $transaction);
+        $transaction = $this->createTransaction(
+            null,
+            $this->payeeId,
+            $this->amount,
+            true,
+            TransactionStatusEnum::completed()
+        );
+        $this->notifyUser($payeeAccount->user, $transaction);
     }
 
     /**
@@ -91,20 +94,43 @@ class ProcessTransactionJob implements ShouldQueue
         $payerAccount = $this->getAccount($this->payerId);
 
         if ($payerAccount->balance < $this->amount) {
-            $this->createTransaction($this->payerId, $this->payeeId, $this->amount, false, TransactionStatusEnum::failed());
+            $this->createTransaction(
+                $this->payerId,
+                $this->payeeId,
+                $this->amount,
+                false,
+                TransactionStatusEnum::failed(),
+                'Insufficient balance'
+            );
+            dump('Insufficient balance');
+            Log::warning('Transaction failed due to insufficient balance.');
             return;
         }
 
         if (!$processTransactionService->processTransaction()) {
-            $this->createTransaction($this->payerId, $this->payeeId, $this->amount, false, TransactionStatusEnum::failed());
+            $this->createTransaction(
+                $this->payerId,
+                $this->payeeId,
+                $this->amount,
+                false,
+                TransactionStatusEnum::failed(),
+                'Unauthorized transaction'
+            );
+            dump('Unauthorized transaction');
+            Log::warning('Unauthorized transaction.');
             return;
         }
+        dump('Transaction authorized');
+        try {
+            Log::info('Transaction authorized.');
+            $payerAccount->decrement('balance', $this->amount);
+            $payeeAccount->increment('balance', $this->amount);
+            $transaction = $this->createTransaction($this->payerId, $this->payeeId, $this->amount, true, TransactionStatusEnum::completed());
+            NotifyTransactionJob::dispatch($payeeAccount->user, $transaction);
+        } catch (\Throwable $exception) {
+            dump($exception->getMessage());
+        }
 
-        $payerAccount->decrement('balance', $this->amount);
-        $payeeAccount->increment('balance', $this->amount);
-
-        $transaction = $this->createTransaction($this->payerId, $this->payeeId, $this->amount, true, TransactionStatusEnum::completed());
-        $this->notifyUser($this->payeeId, $transaction);
     }
 
     /**
@@ -117,49 +143,21 @@ class ProcessTransactionJob implements ShouldQueue
      * @param TransactionStatusEnum $status
      * @return Transaction
      */
-    private function createTransaction(?int $fromUserId, int $toUserId, float $amount, bool $isReceived, TransactionStatusEnum $status): Transaction
-    {
+    private function createTransaction(
+        ?int $fromUserId,
+        int $toUserId,
+        float $amount,
+        bool $isReceived,
+        TransactionStatusEnum $status,
+        ?string $errorMessage = null
+    ): Transaction {
         return Transaction::create([
             'from_user_id' => $fromUserId,
             'to_user_id' => $toUserId,
             'amount' => $amount,
             'is_received' => $isReceived,
             'status' => $status,
+            'error_message' => $errorMessage
         ]);
-    }
-
-    /**
-     * Notify the user about the transaction.
-     *
-     * @param int $userId
-     * @param Transaction $transaction
-     * @return void
-     */
-    private function notifyUser(int $userId, Transaction $transaction): void
-    {
-        try {
-            $user = User::find($userId);
-
-            // Dados que serão enviados para o mock de notificação
-            $payload = [
-                'user_id' => $userId,
-                'email' => $user->email,
-                'message' => "Você recebeu uma transferência de R$ {$transaction->amount}!",
-            ];
-
-            $response = Http::post('https://util.devi.tools/api/v1/notify', $payload);
-
-            if ($response->failed()) {
-                Log::warning('Falha ao enviar notificação de transação', [
-                    'user_id' => $userId,
-                    'response' => $response->body(),
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Erro ao tentar notificar usuário', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }
